@@ -13,39 +13,61 @@ Pianoblox is a Python script designed to automatically play music sheets on virt
 ## Requirements
 
 *   Python 3
-*   `pynput` library (for keyboard control)
-*   `tkinter` (Python's standard GUI framework)
+*   `pynput` (for keyboard control)
+*   `tkinter` (standard GUI framework)
 
 ## Installation
 
-1.  Ensure you have Python 3 installed on your system.
-2.  **GUI Library (tkinter):**
-    *   On **Windows**, `tkinter` usually comes bundled with Python and no separate installation is needed.
+1.  **Set up a Virtual Environment (Recommended):**
+    It's highly recommended to use a virtual environment to manage project dependencies.
+    *   Navigate to your project directory in the terminal.
+    *   Create a virtual environment (e.g., named `venv`):
+        ```bash
+        python3 -m venv venv
+        ```
+    *   Activate the virtual environment:
+        *   On macOS and Linux:
+            ```bash
+            source venv/bin/activate
+            ```
+        *   On Windows:
+            ```bash
+            venv\\Scripts\\activate
+            ```
+    You should see the virtual environment name (e.g., `(venv)`) in your terminal prompt.
+
+2.  **Ensure Python 3 is installed** on your system and accessible within your (active) virtual environment.
+
+3.  **GUI Library (tkinter):**
+    *   On **Windows**, `tkinter` usually comes bundled with Python.
     *   On **macOS**:
         *   `tkinter` usually comes bundled with Python installations from python.org.
-        *   If you are using Python installed via **Homebrew** and `tkinter` is missing, you can install it using:
+        *   If you are using Python installed via **Homebrew** and `tkinter` is missing, you might need to install it using:
             ```bash
             brew install python-tk
             ```
-    *   On **Linux**, `tkinter` often needs to be installed separately. You can typically install it using your system's package manager. For example:
+            (Ensure your Homebrew-installed Python is the one used in your virtual environment if you go this route).
+    *   On **Linux**, `tkinter` often needs to be installed separately using your system's package manager. For example:
         *   Debian/Ubuntu: `sudo apt-get install python3-tk`
         *   Fedora: `sudo dnf install python3-tkinter`
-    *   Alternatively, or if a system package is not available/preferred, you can try installing the `python-tk` package via pip, which you've already added to the command below.
-3.  Install the `pynput` library using pip:
+    (These system-level installations of tkinter should be available to your virtual environment's Python interpreter).
+
+4.  **Install the `pynput` library** using pip (within your activated virtual environment):
     ```bash
     pip install pynput
     ```
 
 ## Running Pianoblox
+
 1.  Open your terminal or command prompt.
-2.  Run the script using the command:
+2.  **Activate your virtual environment** if you used one during installation:
+    *   On macOS and Linux: `source venv/bin/activate`
+    *   On Windows: `venv\\Scripts\\activate`
+3.  Run the script using the command:
     ```bash
-    python3 pianoblox.py
+    python pianoblox.py 
     ```
-    Or if you are in a virtual environment:
-    ```bash
-    python pianoblox.py
-    ```
+    (Or `python3 pianoblox.py` if `python` doesn't point to Python 3 in your environment).
 
 ## How to Use
 

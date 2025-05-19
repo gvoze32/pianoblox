@@ -20,6 +20,12 @@ piano_music_cleaned_cache = ""
 KEY_DELAY = 0.1
 HOTKEY_CHARS = {'-', '=', '[', ']'} 
 
+# --- Number to QWERTY letter mapping ---
+NUM_TO_LETTER_MAP = {
+    '1': 'q', '2': 'w', '3': 'e', '4': 'r', '5': 't',
+    '6': 'y', '7': 'u', '8': 'i', '9': 'o', '0': 'p'
+}
+
 kb_controller = keyboard.Controller()
 
 root = None
@@ -60,6 +66,13 @@ def handle_reset_button():
     update_music_caches() 
     reset_progress_state() 
 
+def translate_notes_for_typing(notes_to_translate):
+    """Translates number characters in a string to their corresponding QWERTY letters."""
+    translated_chars = []
+    for char in notes_to_translate:
+        translated_chars.append(NUM_TO_LETTER_MAP.get(char, char))
+    return "".join(translated_chars)
+
 def play_next_note_action():
     """Plays the next note based on the current state and input music."""
     global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache
@@ -86,10 +99,12 @@ def play_next_note_action():
     match = re.match(r"(\[.*?]|.)", cleaned_music[current_idx_cleaned:])
     if match:
         note_token = match.group(1)
-        keys_to_send = note_token.strip("[]")
+        keys_to_send_original = note_token.strip("[]")
+        
+        keys_to_send = translate_notes_for_typing(keys_to_send_original)
 
         current_idx_cleaned += len(note_token)
-        print(f"[Debug] play_next_note_action: Attempting to type: '{keys_to_send}', new clean_idx: {current_idx_cleaned}")
+        print(f"[Debug] play_next_note_action: Raw token: '{note_token}', Original for typing: '{keys_to_send_original}', Translated for typing: '{keys_to_send}', new clean_idx: {current_idx_cleaned}")
 
         while (current_idx_raw_display < len(raw_music) and 
                raw_music[current_idx_raw_display] in " \n\r/"):

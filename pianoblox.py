@@ -56,7 +56,7 @@ def reset_progress_state():
         next_notes_display_widget.config(state="disabled")
 
 def handle_reset_button():
-    """Action for the Reset button."""
+    """Action for the Reload Music / Start Over button."""
     update_music_caches() 
     reset_progress_state() 
 
@@ -157,7 +157,7 @@ def setup_and_run_gui():
     piano_music_input_widget.insert(tk.INSERT, "Example: q w e [rt] y / [tyu] o p")
 
     tk.Label(main_frame, text="Hotkeys (one note per press): -, =, [, ]", justify=tk.LEFT).pack(pady=2, anchor="w")
-    tk.Label(main_frame, text="Click 'Reset' after changing the song or to start from the beginning.", justify=tk.LEFT).pack(pady=2, anchor="w")
+    tk.Label(main_frame, text="Click 'Reload Music / Start Over' after changing the song or to start from the beginning.", justify=tk.LEFT).pack(pady=2, anchor="w")
     
     tk.Label(main_frame, text="Next Notes:", justify=tk.LEFT).pack(pady=(10,2), anchor="w")
     next_notes_display_widget = tk.Text(main_frame, height=4, width=65, state="disabled", relief=tk.SOLID, borderwidth=1, wrap=tk.WORD, background="white", fg="black")

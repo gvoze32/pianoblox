@@ -14,7 +14,7 @@ Pianoblox is a Python script designed to automatically play music sheets on virt
 
 *   Python 3
 *   `pynput` library (for keyboard control)
-*   `tkinter` (Python's standard GUI framework).
+*   `tkinter` (Python's standard GUI framework)
 
 ## Installation
 
@@ -31,9 +31,9 @@ Pianoblox is a Python script designed to automatically play music sheets on virt
         *   Debian/Ubuntu: `sudo apt-get install python3-tk`
         *   Fedora: `sudo dnf install python3-tkinter`
     *   Alternatively, or if a system package is not available/preferred, you can try installing the `python-tk` package via pip, which you've already added to the command below.
-3.  Install the `pynput` (and `python-tk` if not obtained otherwise) libraries using pip:
+3.  Install the `pynput` library using pip:
     ```bash
-    pip install pynput python-tk
+    pip install pynput
     ```
 
 ## Running Pianoblox

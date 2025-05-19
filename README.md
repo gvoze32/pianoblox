@@ -36,9 +36,7 @@ Pianoblox is a Python script designed to automatically play music sheets on virt
             ```
     You should see the virtual environment name (e.g., `(venv)`) in your terminal prompt.
 
-2.  **Ensure Python 3 is installed** on your system and accessible within your (active) virtual environment.
-
-3.  **GUI Library (tkinter):**
+2.  **GUI Library (tkinter):**
     *   On **Windows**, `tkinter` usually comes bundled with Python.
     *   On **macOS**:
         *   `tkinter` usually comes bundled with Python installations from python.org.
@@ -52,7 +50,7 @@ Pianoblox is a Python script designed to automatically play music sheets on virt
         *   Fedora: `sudo dnf install python3-tkinter`
     (These system-level installations of tkinter should be available to your virtual environment's Python interpreter).
 
-4.  **Install the `pynput` library** using pip (within your activated virtual environment):
+3.  **Install the `pynput` library** using pip (within your activated virtual environment):
     ```bash
     pip install pynput
     ```

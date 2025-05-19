@@ -17,7 +17,7 @@ current_idx_raw_display = 0
 piano_music_raw_cache = ""
 piano_music_cleaned_cache = ""
 
-KEY_DELAY = 0.1  # seconds, as per original script
+KEY_DELAY = 0.1
 HOTKEY_CHARS = {'-', '=', '[', ']'} 
 
 kb_controller = keyboard.Controller()
@@ -28,12 +28,11 @@ next_notes_display_widget = None
 keyboard_listener_object = None
 
 # --- Core Logic Functions ---
-
 def update_music_caches():
     """Reads music from input, updates raw and cleaned caches. Returns True if changed."""
     global piano_music_raw_cache, piano_music_cleaned_cache, current_idx_cleaned, current_idx_raw_display
     
-    if not piano_music_input_widget: # Widget not yet ready
+    if not piano_music_input_widget:
         return False
 
     current_raw_music = piano_music_input_widget.get("1.0", tk.END).strip()
@@ -41,7 +40,6 @@ def update_music_caches():
     if current_raw_music != piano_music_raw_cache:
         piano_music_raw_cache = current_raw_music
         piano_music_cleaned_cache = re.sub(r"[\s/]", "", piano_music_raw_cache)
-        # If music changes, progress must be reset
         current_idx_cleaned = 0
         current_idx_raw_display = 0
         return True
@@ -66,10 +64,8 @@ def play_next_note_action():
     """Plays the next note based on the current state and input music."""
     global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache
 
-    # Always update caches if input text might have changed
-    # and reset progress if the music actually changed.
     if update_music_caches(): 
-        reset_progress_state() # Automatically reset if music changes
+        reset_progress_state()
 
     raw_music = piano_music_raw_cache
     cleaned_music = piano_music_cleaned_cache
@@ -95,13 +91,10 @@ def play_next_note_action():
         current_idx_cleaned += len(note_token)
         print(f"[Debug] play_next_note_action: Attempting to type: '{keys_to_send}', new clean_idx: {current_idx_cleaned}")
 
-        # Advance display index for raw music string
-        # 1. Skip delimiter characters in raw_music
         while (current_idx_raw_display < len(raw_music) and 
                raw_music[current_idx_raw_display] in " \n\r/"):
             current_idx_raw_display += 1
         
-        # 2. Advance past the current note token's representation in raw_music
         if current_idx_raw_display < len(raw_music):
             current_idx_raw_display += len(note_token)
         
@@ -114,7 +107,7 @@ def play_next_note_action():
             next_notes_display_widget.config(state="disabled")
 
         if keys_to_send: 
-            time.sleep(0.05) # Small delay to potentially help with window focus
+            time.sleep(0.05)
             kb_controller.type(keys_to_send)
         
         time.sleep(KEY_DELAY)
@@ -128,20 +121,18 @@ def on_key_press(key):
     try:
         pressed_char = key.char
     except AttributeError:
-        pass # Not a character key
+        pass
 
     if pressed_char and pressed_char in HOTKEY_CHARS:
         print(f"[Debug] on_key_press: Hotkey '{pressed_char}' detected.")
-        if root: # Ensure GUI is available
-             # Run in Tkinter's main thread
+        if root:
              print("[Debug] on_key_press: Scheduling play_next_note_action via root.after_idle()")
              root.after_idle(play_next_note_action)
-        return True   # DIAGNOSTIC CHANGE: Always return True to see if listener continues
-    return True  # Allow other keys
+        return True
+    return True
 
 def start_keyboard_listener():
     global keyboard_listener_object
-    # Create listener as a daemon thread so it exits automatically when the main program finishes
     keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
     keyboard_listener_object.start()
 
@@ -152,7 +143,7 @@ def setup_and_run_gui():
     print("[Debug] setup_and_run_gui: Initializing GUI...")
     root = tk.Tk()
     root.title("Pianoblox - Universal Piano Autoplayer")
-    root.wm_attributes("-topmost", 1) # To keep the window always on top
+    root.wm_attributes("-topmost", 1)
 
     tk.Label(root, text="Universal Virtual Piano Autoplayer", font=("Arial", 14, "bold")).pack(pady=(10,5))
     
@@ -176,7 +167,7 @@ def setup_and_run_gui():
     reset_button.pack(pady=10)
     
     # Initial setup
-    if piano_music_input_widget: # Ensure widget exists
+    if piano_music_input_widget:
       print("[Debug] setup_and_run_gui: Performing initial music cache update and progress reset.")
       update_music_caches()
       reset_progress_state()
@@ -207,7 +198,6 @@ def setup_and_run_gui():
 
 if __name__ == "__main__":
     print("[Debug] Script started in __main__.")
-    # Add a print statement at the very beginning of play_next_note_action
     original_play_next_note_action = play_next_note_action
     def play_next_note_action_wrapper():
         print("[Debug] play_next_note_action: Called.")

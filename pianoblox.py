@@ -479,7 +479,7 @@ class MidiFile:
         self.tempo = 0
 
         self.midiRecord_list = []
-        self.record_file = "midiRecord.json"
+        self.record_file = os.path.join(get_temp_directory(), "midiRecord.json")
         self.midi_file = midi_file
 
         self.deltaTimeStarted = False
@@ -775,9 +775,12 @@ class MidiFile:
 
     def save_record(self, record_file):
         import json
-        print("Saving processing log to", record_file)
-        with codecs.open(record_file, "w", encoding='utf-8') as f:
-            json.dump(self.midiRecord_list, f, indent=2)
+        try:
+            print("Saving processing log to", record_file)
+            with codecs.open(record_file, "w", encoding='utf-8') as f:
+                json.dump(self.midiRecord_list, f, indent=2)
+        except Exception as e:
+            print(f"Warning: Could not save record file: {e}")
         return
 
 # --- MIDI Playback Functions ---

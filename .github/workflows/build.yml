@@ -93,16 +93,20 @@ jobs:
           
           # Copy icon
           cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/pianoblox.png
+          cp assets/icon.png AppDir/pianoblox.png
           
           # Create desktop file
-          cat > AppDir/usr/share/applications/pianoblox.desktop << EOF
+          cat > AppDir/pianoblox.desktop << EOF
           [Desktop Entry]
           Type=Application
           Name=PianoBlox
-          Exec=pianoblox-linux
+          Exec=${{ matrix.output_name }}
           Icon=pianoblox
           Categories=AudioVideo;Audio;Music;
           EOF
+          
+          # Also create in the standard location
+          cp AppDir/pianoblox.desktop AppDir/usr/share/applications/
           
           # Create AppRun file
           cat > AppDir/AppRun << EOF

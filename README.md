@@ -39,11 +39,29 @@ Pianoblox is a universal virtual piano autoplayer that allows you to play notes 
 
 ### Important Note for macOS Users
 
-You need to grant permissions in System Settings > Privacy & Security for both:
-- Accessibility
-- Input Monitoring
+You need to grant permissions in System Settings > Privacy & Security for Input Monitoring.
+This allows Pianoblox to send keystrokes to virtual piano applications.
 
-This allows Pianoblox to control other applications and send keystrokes.
+## Troubleshooting Installation
+
+### macOS Security Issues
+
+If you encounter security warnings on macOS when trying to open the application ("PianoBlox can't be opened because it is from an unidentified developer" or "PianoBlox is damaged and can't be opened"), you can use the following Terminal command:
+
+```
+xattr -c /Applications/PianoBlox.app
+```
+
+This removes the quarantine flag that macOS applies to applications downloaded from the internet.
+
+### Setting Up Input Monitoring Permission
+
+To allow PianoBlox to send keystrokes to piano applications:
+
+1. Go to System Settings > Privacy & Security > Input Monitoring
+2. Click the lock icon at the bottom and enter your password
+3. Find and enable the checkbox next to PianoBlox
+4. Restart the application if it's already running
 
 ## Usage
 

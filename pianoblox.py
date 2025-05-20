@@ -49,7 +49,7 @@ legitModeActive = False
 
 conversionCases = {'!': '1', '@': '2', '£': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0'}
 
-kb_controller = keyboard.Controller()  # Initialize here as global
+kb_controller = keyboard.Controller()
 
 root = None
 piano_music_input_widget = None
@@ -199,7 +199,6 @@ def play_next_note_action():
                 
             time.sleep(0.05)
             try:
-                # Type each character separately with a short delay between
                 for char in keys_to_send:
                     kb_controller.press(char)
                     kb_controller.release(char)
@@ -241,7 +240,6 @@ def start_keyboard_listener():
     global keyboard_listener_object
     print("[Debug] Starting keyboard listener...")
     try:
-        # Stop any existing listener first
         if keyboard_listener_object and keyboard_listener_object.is_alive():
             keyboard_listener_object.stop()
             print("[Debug] Stopped existing keyboard listener")
@@ -255,7 +253,8 @@ def start_keyboard_listener():
 # --- GUI Setup ---
 def setup_and_run_gui():
     global root, piano_music_input_widget, next_notes_display_widget, keyboard_listener_object
-    global midi_listbox, speed_label, autoplay_button, status_label
+    global midi_listbox, speed_label, autoplay_button, status_label, current_midi_files
+    global search_var, sort_var, midi_count_label, midi_info_label
 
     print("[Debug] setup_and_run_gui: Initializing GUI...")
     root = tk.Tk()
@@ -317,11 +316,9 @@ def setup_and_run_gui():
                          style="Section.TLabel")
     midi_count_label.pack(anchor="w", pady=(0, 5))
     
-    # Add search and sort options
     search_sort_frame = ttk.Frame(midi_frame)
     search_sort_frame.pack(fill=tk.X, pady=(0, 5))
     
-    # Search box
     ttk.Label(search_sort_frame, text="Search:", 
              background=section_bg).pack(side=tk.LEFT, padx=(0, 5))
     
@@ -331,7 +328,6 @@ def setup_and_run_gui():
     search_entry.pack(side=tk.LEFT, padx=(0, 10))
     search_entry.bind("<KeyRelease>", search_midi_files)
     
-    # Sort options
     ttk.Label(search_sort_frame, text="Sort by:", 
              background=section_bg).pack(side=tk.LEFT, padx=(0, 5))
     
@@ -482,7 +478,6 @@ def setup_and_run_gui():
     print("[Debug] setup_and_run_gui: Starting keyboard listener...")
     start_keyboard_listener()
 
-    # Add MIDI info label
     global midi_info_label
     midi_info_label = ttk.Label(midi_frame, text="No file selected", 
                         background=section_bg, font=("Arial", 9))
@@ -1209,12 +1204,10 @@ def load_midi_file(file_path=None):
         status_label.config(text=f"Loading MIDI file: {os.path.basename(file_path)}...")
 
     try:
-        # Use the temp directory for conversion files
         temp_dir = get_temp_directory()
         song_file = os.path.join(temp_dir, "song.json")
         sheet_file = os.path.join(temp_dir, "sheetConversion.json")
         
-        # If file_path is not in the app's midi directory, copy it there
         if not file_path.startswith(get_midi_directory()):
             midi_dir = get_midi_directory()
             dest_file = os.path.join(midi_dir, os.path.basename(file_path))
@@ -1296,7 +1289,7 @@ def import_midi_file(file_path):
 
 def load_selected_midi():
     """Load the selected MIDI file from the listbox."""
-    global midi_listbox, status_label
+    global midi_listbox, status_label, current_midi_files
     if not midi_listbox:
         return
         
@@ -1306,14 +1299,19 @@ def load_selected_midi():
             status_label.config(text="Please select a MIDI file from the list")
         return
         
+    if 'current_midi_files' not in globals() or not current_midi_files:
+        midi_folder = get_midi_directory()
+        current_midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
+    
+    selected_file = current_midi_files[selection[0]]
+    
     midi_folder = get_midi_directory()
-    midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
-    selected_file = midi_files[selection[0]]
-    load_midi_file(os.path.join(midi_folder, selected_file))
+    file_path = os.path.join(midi_folder, selected_file)
+    load_midi_file(file_path)
 
 def delete_selected_midi():
     """Delete the selected MIDI file from the app's midi directory."""
-    global midi_listbox, status_label
+    global midi_listbox, status_label, current_midi_files
     if not midi_listbox:
         return
         
@@ -1323,15 +1321,19 @@ def delete_selected_midi():
             status_label.config(text="Please select a MIDI file to delete")
         return
     
+    if 'current_midi_files' not in globals() or not current_midi_files:
+        midi_folder = get_midi_directory()
+        current_midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
+    
+    selected_file = current_midi_files[selection[0]]
+    
     midi_folder = get_midi_directory()
-    midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
-    selected_file = midi_files[selection[0]]
     file_path = os.path.join(midi_folder, selected_file)
     
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {selected_file}?"):
         try:
             os.remove(file_path)
-            refresh_midi_list()
+            refresh_midi_list(search_term=search_var.get(), sort_by=sort_var.get())
             if status_label:
                 status_label.config(text=f"Deleted: {selected_file}")
         except Exception as e:
@@ -1340,7 +1342,7 @@ def delete_selected_midi():
 
 def refresh_midi_list(search_term="", sort_by="name"):
     """Refresh the list of available MIDI files."""
-    global midi_listbox, midi_count_label
+    global midi_listbox, midi_count_label, current_midi_files
     if not midi_listbox:
         return
         
@@ -1349,22 +1351,21 @@ def refresh_midi_list(search_term="", sort_by="name"):
     midi_folder = get_midi_directory()
     midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
     
-    # Filter files by search term
     if search_term:
         midi_files = [f for f in midi_files if search_term.lower() in f.lower()]
     
-    # Sort files
     if sort_by == "name":
         midi_files.sort()
     elif sort_by == "date":
         midi_files.sort(key=lambda f: os.path.getmtime(os.path.join(midi_folder, f)), reverse=True)
     
+    current_midi_files = midi_files.copy()
+    
     for file in midi_files:
         midi_listbox.insert(tk.END, file)
         
-    # Update count label
     if 'midi_count_label' in globals() and midi_count_label:
-        midi_count_label.config(text=f"MIDI Library: ({len(midi_files)} files)")
+        midi_count_label.config(text=f"MIDI Library ({len(midi_files)} files)")
 
 def search_midi_files(event=None):
     """Search MIDI files based on the search box content."""
@@ -1378,13 +1379,11 @@ def get_midi_info(file_path):
         if not midi.success:
             return {"status": "error", "message": "Failed to parse MIDI file"}
             
-        # Count actual notes (not tempo changes or other events)
         note_count = 0
         for timing, notes in midi.notes:
             if not "tempo" in notes and "~" not in notes:
                 note_count += len(notes)
                 
-        # Calculate approximate duration
         if len(midi.notes) > 1:
             last_time = float(midi.notes[-1][0])
             duration_secs = last_time
@@ -1394,7 +1393,6 @@ def get_midi_info(file_path):
         else:
             duration = "Unknown"
             
-        # Get tempo if available
         tempo = "Unknown"
         for timing, notes in midi.notes:
             if "tempo" in notes:
@@ -1448,11 +1446,12 @@ def show_midi_info(event=None):
         if status_label:
             status_label.config(text=f"Error getting info: {selected_file}")
 
+current_midi_files = []
+
 # --- Main Function ---
 if __name__ == "__main__":
     print("[Debug] Script started in __main__.")
     
-    # Create app directories
     app_data_dir = get_app_data_dir()
     midi_dir = get_midi_directory()
     temp_dir = get_temp_directory()
@@ -1461,7 +1460,6 @@ if __name__ == "__main__":
     print(f"[Debug] MIDI directory: {midi_dir}")
     print(f"[Debug] Temp directory: {temp_dir}")
     
-    # Check for legacy midi directory in current folder and migrate files if needed
     legacy_midi_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "midi")
     if os.path.exists(legacy_midi_dir):
         for file in os.listdir(legacy_midi_dir):
@@ -1472,7 +1470,6 @@ if __name__ == "__main__":
                     print(f"[Debug] Migrating {file} from legacy midi directory")
                     shutil.copy2(src_file, dest_file)
     
-    # Check for song.json in temp directory
     song_file = os.path.join(temp_dir, "song.json")
     sheet_file = os.path.join(temp_dir, "sheetConversion.json")
     if os.path.exists(song_file) and os.path.exists(sheet_file):

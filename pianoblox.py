@@ -12,7 +12,6 @@ try:
     from pynput import keyboard
 except ImportError:
     print("The 'pynput' library is required. Please install it via: pip install pynput")
-    messagebox.showerror("Dependency Missing", "The 'pynput' library is required.\nPlease install it via: pip install pynput")
     exit()
 
 # --- Global Variables ---
@@ -308,8 +307,8 @@ def setup_and_run_gui():
     speed_frame.pack(fill=tk.X)
     
     speed_label = tk.Label(
-        speed_frame, text=f"Speed: {playback_speed:.2f}x", 
-        font=("Arial", 11, "bold"), bg=section_bg
+        speed_frame, text=f"{playback_speed:.2f}x", 
+        font=("Arial", 10), bg=section_bg, fg="#2c3e50"
     )
     speed_label.pack(side=tk.LEFT, padx=(0, 10))
     
@@ -379,7 +378,8 @@ def setup_and_run_gui():
         print("[Debug] setup_and_run_gui: Performing initial music cache update and progress reset.")
         update_music_caches()
         reset_progress_state()
-
+    
+    update_speed_display()
     print("[Debug] setup_and_run_gui: Starting keyboard listener...")
     keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
     keyboard_listener_object.start()
@@ -762,23 +762,27 @@ def is_shifted(char_in):
 
 def speed_up():
     """Increase playback speed."""
-    global playback_speed, status_label
+    global playback_speed, status_label, speed_label
     playback_speed *= speedMultiplier
-    if speed_label:
-        speed_label.config(text=f"Speed: {playback_speed:.2f}x")
+    update_speed_display()
     print(f"Speeding up: Playback speed is now {playback_speed:.2f}x")
     if status_label:
         status_label.config(text=f"Speed increased to {playback_speed:.2f}x")
 
 def slow_down():
     """Decrease playback speed."""
-    global playback_speed, status_label
+    global playback_speed, status_label, speed_label
     playback_speed /= speedMultiplier
-    if speed_label:
-        speed_label.config(text=f"Speed: {playback_speed:.2f}x")
+    update_speed_display()
     print(f"Slowing down: Playback speed is now {playback_speed:.2f}x")
     if status_label:
         status_label.config(text=f"Speed decreased to {playback_speed:.2f}x")
+
+def update_speed_display():
+    """Update speed display in UI"""
+    global speed_label, playback_speed
+    if speed_label:
+        speed_label.config(text=f"{playback_speed:.2f}x")
 
 def press_letter(str_letter):
     """Press a key on the keyboard."""
@@ -806,7 +810,7 @@ def release_letter(str_letter):
 
 def process_midi_file():
     """Process the song.json file created by MIDI conversion."""
-    global playback_speed
+    global playback_speed, speed_label
     import json
     try:
         with open("song.json", "r") as macro_file:
@@ -818,8 +822,7 @@ def process_midi_file():
                 try:
                     playback_speed = float(song_data["playback_speed"])
                     print("Playback speed is set to %.2f" % playback_speed)
-                    if speed_label:
-                        speed_label.config(text=f"Speed: {playback_speed:.2f}x")
+                    update_speed_display()
                 except ValueError:
                     print("Error: Invalid playback speed value")
                     return None
@@ -889,7 +892,7 @@ def parse_midi_info():
 
 def adjust_tempo_for_current_note():
     """Adjust tempo for the current note if needed."""
-    global isPlaying, storedIndex, playback_speed, elapsedTime, legitModeActive
+    global isPlaying, storedIndex, playback_speed, elapsedTime, legitModeActive, speed_label
     if len(infoTuple) > 3:
         tempo_changes = infoTuple[3]
 
@@ -897,8 +900,7 @@ def adjust_tempo_for_current_note():
             if change[0] == storedIndex:
                 new_tempo = change[1]
                 playback_speed = new_tempo / origionalPlaybackSpeed
-                if speed_label:
-                    speed_label.config(text=f"Speed: {playback_speed:.2f}x")
+                update_speed_display()
                 print(f"Tempo changed: New playback speed is {playback_speed:.2f}x")
 
 def play_next_midi_note():
@@ -1106,23 +1108,19 @@ def load_midi_file(file_path=None):
             
             infoTuple = process_midi_file()
             if infoTuple is None:
-                messagebox.showerror("Error", "Failed to process the MIDI file.")
                 if status_label:
-                    status_label.config(text="Error: Failed to process MIDI file")
+                    status_label.config(text="Error: Failed to process the MIDI file")
                 return
                 
             infoTuple[2] = parse_midi_info()
-            messagebox.showinfo("Success", f"MIDI file loaded: {os.path.basename(file_path)}")
             if status_label:
                 status_label.config(text=f"MIDI file loaded: {os.path.basename(file_path)}")
         else:
-            messagebox.showerror("Error", "Failed to process the MIDI file.")
             if status_label:
-                status_label.config(text="Error: Failed to process MIDI file")
+                status_label.config(text="Error: Failed to process the MIDI file")
     except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while loading the MIDI file: {str(e)}")
         if status_label:
-            status_label.config(text="Error loading MIDI file")
+            status_label.config(text=f"Error: {str(e)}")
 
 def browse_for_midi():
     """Open a file dialog to select a MIDI file."""
@@ -1130,13 +1128,14 @@ def browse_for_midi():
 
 def load_selected_midi():
     """Load the selected MIDI file from the listbox."""
-    global midi_listbox
+    global midi_listbox, status_label
     if not midi_listbox:
         return
         
     selection = midi_listbox.curselection()
     if not selection:
-        messagebox.showinfo("Selection Required", "Please select a MIDI file from the list")
+        if status_label:
+            status_label.config(text="Please select a MIDI file from the list")
         return
         
     midi_folder = 'midi'

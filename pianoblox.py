@@ -309,7 +309,7 @@ def setup_and_run_gui():
     midi_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     midi_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(midi_frame, text="Available MIDI files:", 
+    ttk.Label(midi_frame, text="MIDI Library:", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     midi_list_frame = ttk.Frame(midi_frame)
@@ -361,7 +361,7 @@ def setup_and_run_gui():
     shortcuts_frame = ttk.Frame(control_frame)
     shortcuts_frame.pack(fill=tk.X, pady=5)
     
-    shortcut_text = "DELETE: Start/Stop | HOME: Rewind | END: Next | PAGE UP/DOWN: Speed"
+    shortcut_text = "DELETE: Start/Stop   |   HOME: Rewind 10 notes   |   END: Skip 10 notes   |   PAGE UP/DOWN: Speed"
     ttk.Label(shortcuts_frame, text=shortcut_text, 
              background=section_bg, font=("Arial", 9)).pack(anchor="w")
     

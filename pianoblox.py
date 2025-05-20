@@ -253,7 +253,7 @@ def setup_and_run_gui():
     midi_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     midi_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(midi_frame, text="Available MIDI files in /midi/ folder:", 
+    ttk.Label(midi_frame, text="Available MIDI files in midi folder:", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     midi_list_frame = ttk.Frame(midi_frame)

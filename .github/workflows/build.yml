@@ -42,8 +42,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install pynput pyinstaller
           
-      - name: Create midi directory
+      - name: Create midi directory (Unix)
+        if: runner.os != 'Windows'
         run: mkdir -p midi
+          
+      - name: Create midi directory (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          if (-not (Test-Path -Path "midi")) {
+            mkdir midi
+          }
           
       - name: Build with PyInstaller
         run: pyinstaller --onefile --name ${{ matrix.output_name }} pianoblox.py

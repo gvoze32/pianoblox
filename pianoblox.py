@@ -269,6 +269,9 @@ def setup_and_run_gui():
     section_bg = "#ffffff"
     border_color = "#bdc3c7"
     
+    if sys.platform.startswith('win'):
+        button_text_color = "black"
+        
     root.configure(bg=bg_color)
     
     style = ttk.Style()

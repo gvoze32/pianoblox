@@ -120,7 +120,7 @@ jobs:
           chmod +x AppDir/AppRun
           
           # Generate AppImage
-          ./appimagetool AppDir dist/${{ matrix.output_name }}.AppImage
+          ARCH=x86_64 ./appimagetool AppDir dist/${{ matrix.output_name }}.AppImage
           
       - name: Upload Windows Artifacts
         if: matrix.os == 'windows-latest'

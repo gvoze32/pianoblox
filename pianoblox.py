@@ -7,11 +7,18 @@ import os
 import sys
 import codecs
 import random
+import shutil
 
 try:
     from pynput import keyboard
 except ImportError:
     print("The 'pynput' library is required. Please install it via: pip install pynput")
+    exit()
+
+try:
+    import appdirs
+except ImportError:
+    print("The 'appdirs' library is required. Please install it via: pip install appdirs")
     exit()
 
 # --- Global Variables ---
@@ -52,6 +59,28 @@ midi_listbox = None
 speed_label = None
 autoplay_button = None
 status_label = None
+
+# --- App Data Directory Functions ---
+def get_app_data_dir():
+    """Get the application data directory for this app"""
+    app_data_dir = appdirs.user_data_dir("PianoBlox", False)
+    if not os.path.exists(app_data_dir):
+        os.makedirs(app_data_dir, exist_ok=True)
+    return app_data_dir
+
+def get_midi_directory():
+    """Get the MIDI files directory in the app data folder"""
+    midi_dir = os.path.join(get_app_data_dir(), "midi")
+    if not os.path.exists(midi_dir):
+        os.makedirs(midi_dir, exist_ok=True)
+    return midi_dir
+
+def get_temp_directory():
+    """Get the temporary directory for conversion files"""
+    temp_dir = os.path.join(get_app_data_dir(), "temp")
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir, exist_ok=True)
+    return temp_dir
 
 # --- Core Logic Functions ---
 def update_music_caches():
@@ -253,7 +282,7 @@ def setup_and_run_gui():
     midi_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     midi_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(midi_frame, text="Available MIDI files in midi folder:", 
+    ttk.Label(midi_frame, text="Available MIDI files:", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     midi_list_frame = ttk.Frame(midi_frame)
@@ -285,10 +314,16 @@ def setup_and_run_gui():
     load_midi_button.pack(side=tk.LEFT, padx=(0, 5))
     
     browse_midi_button = ttk.Button(
-        midi_button_frame, text="Browse for MIDI...", 
+        midi_button_frame, text="Browse & Import...", 
         command=browse_for_midi, style="TButton"
     )
-    browse_midi_button.pack(side=tk.LEFT)
+    browse_midi_button.pack(side=tk.LEFT, padx=(0, 5))
+    
+    delete_midi_button = ttk.Button(
+        midi_button_frame, text="Delete Selected", 
+        command=delete_selected_midi, style="TButton"
+    )
+    delete_midi_button.pack(side=tk.LEFT)
     
     control_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     control_frame.pack(fill=tk.BOTH, padx=2, pady=5)
@@ -812,8 +847,12 @@ def process_midi_file():
     """Process the song.json file created by MIDI conversion."""
     global playback_speed, speed_label
     import json
+    
+    temp_dir = get_temp_directory()
+    song_file = os.path.join(temp_dir, "song.json")
+    
     try:
-        with open("song.json", "r") as macro_file:
+        with open(song_file, "r") as macro_file:
             song_data = json.load(macro_file)
             t_offset_set = False
             t_offset = 0
@@ -1058,7 +1097,7 @@ def handle_midi_keypress(key):
 
 def load_midi_file(file_path=None):
     """Load and process a MIDI file."""
-    global infoTuple, isPlaying, storedIndex, elapsedTime, sheet_file, song_file, status_label
+    global infoTuple, isPlaying, storedIndex, elapsedTime, status_label
     import json
     
     isPlaying = False
@@ -1069,8 +1108,7 @@ def load_midi_file(file_path=None):
     
     if not file_path:
         file_path = filedialog.askopenfilename(
-            initialdir="./midi",
-            title="Select MIDI File",
+            title="Select MIDI File to Import",
             filetypes=(("MIDI files", "*.mid"), ("All files", "*.*"))
         )
     
@@ -1081,8 +1119,20 @@ def load_midi_file(file_path=None):
         status_label.config(text=f"Loading MIDI file: {os.path.basename(file_path)}...")
 
     try:
-        song_file = "song.json"
-        sheet_file = "sheetConversion.json"
+        # Use the temp directory for conversion files
+        temp_dir = get_temp_directory()
+        song_file = os.path.join(temp_dir, "song.json")
+        sheet_file = os.path.join(temp_dir, "sheetConversion.json")
+        
+        # If file_path is not in the app's midi directory, copy it there
+        if not file_path.startswith(get_midi_directory()):
+            midi_dir = get_midi_directory()
+            dest_file = os.path.join(midi_dir, os.path.basename(file_path))
+            if not os.path.exists(dest_file):
+                shutil.copy2(file_path, dest_file)
+                if status_label:
+                    status_label.config(text=f"Imported MIDI file: {os.path.basename(file_path)}")
+            file_path = dest_file
         
         midi = MidiFile(file_path)
         if midi.success:
@@ -1113,6 +1163,7 @@ def load_midi_file(file_path=None):
                 return
                 
             infoTuple[2] = parse_midi_info()
+            refresh_midi_list()
             if status_label:
                 status_label.config(text=f"MIDI file loaded: {os.path.basename(file_path)}")
         else:
@@ -1123,7 +1174,7 @@ def load_midi_file(file_path=None):
             status_label.config(text=f"Error: {str(e)}")
 
 def browse_for_midi():
-    """Open a file dialog to select a MIDI file."""
+    """Open a file dialog to select a MIDI file and import it to the app's midi directory."""
     load_midi_file()
 
 def load_selected_midi():
@@ -1138,10 +1189,37 @@ def load_selected_midi():
             status_label.config(text="Please select a MIDI file from the list")
         return
         
-    midi_folder = 'midi'
+    midi_folder = get_midi_directory()
     midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
     selected_file = midi_files[selection[0]]
     load_midi_file(os.path.join(midi_folder, selected_file))
+
+def delete_selected_midi():
+    """Delete the selected MIDI file from the app's midi directory."""
+    global midi_listbox, status_label
+    if not midi_listbox:
+        return
+        
+    selection = midi_listbox.curselection()
+    if not selection:
+        if status_label:
+            status_label.config(text="Please select a MIDI file to delete")
+        return
+    
+    midi_folder = get_midi_directory()
+    midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
+    selected_file = midi_files[selection[0]]
+    file_path = os.path.join(midi_folder, selected_file)
+    
+    if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {selected_file}?"):
+        try:
+            os.remove(file_path)
+            refresh_midi_list()
+            if status_label:
+                status_label.config(text=f"Deleted: {selected_file}")
+        except Exception as e:
+            if status_label:
+                status_label.config(text=f"Error deleting file: {str(e)}")
 
 def refresh_midi_list():
     """Refresh the list of available MIDI files."""
@@ -1151,10 +1229,7 @@ def refresh_midi_list():
         
     midi_listbox.delete(0, tk.END)
     
-    midi_folder = 'midi'
-    if not os.path.exists(midi_folder):
-        os.makedirs(midi_folder)
-        
+    midi_folder = get_midi_directory()
     midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
     for file in midi_files:
         midi_listbox.insert(tk.END, file)
@@ -1187,12 +1262,30 @@ def on_key_press(key):
 if __name__ == "__main__":
     print("[Debug] Script started in __main__.")
     
-    midi_dir = "midi"
-    if not os.path.exists(midi_dir):
-        os.makedirs(midi_dir)
-        print(f"[Debug] Created '{midi_dir}' directory for MIDI files")
+    # Create app directories
+    app_data_dir = get_app_data_dir()
+    midi_dir = get_midi_directory()
+    temp_dir = get_temp_directory()
     
-    if os.path.exists("song.json") and os.path.exists("sheetConversion.json"):
+    print(f"[Debug] App data directory: {app_data_dir}")
+    print(f"[Debug] MIDI directory: {midi_dir}")
+    print(f"[Debug] Temp directory: {temp_dir}")
+    
+    # Check for legacy midi directory in current folder and migrate files if needed
+    legacy_midi_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "midi")
+    if os.path.exists(legacy_midi_dir):
+        for file in os.listdir(legacy_midi_dir):
+            if file.lower().endswith('.mid'):
+                src_file = os.path.join(legacy_midi_dir, file)
+                dest_file = os.path.join(midi_dir, file)
+                if not os.path.exists(dest_file):
+                    print(f"[Debug] Migrating {file} from legacy midi directory")
+                    shutil.copy2(src_file, dest_file)
+    
+    # Check for song.json in temp directory
+    song_file = os.path.join(temp_dir, "song.json")
+    sheet_file = os.path.join(temp_dir, "sheetConversion.json")
+    if os.path.exists(song_file) and os.path.exists(sheet_file):
         try:
             infoTuple = process_midi_file()
             if infoTuple:

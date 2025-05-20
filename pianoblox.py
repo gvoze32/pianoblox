@@ -34,7 +34,7 @@ NUM_TO_LETTER_MAP = {
 isPlaying = False
 storedIndex = 0
 elapsedTime = 0
-playback_speed = 0.5
+playback_speed = 1.0
 origionalPlaybackSpeed = 1.0
 speedMultiplier = 2.0
 infoTuple = None
@@ -52,6 +52,7 @@ keyboard_listener_object = None
 midi_listbox = None
 speed_label = None
 autoplay_button = None
+status_label = None
 
 # --- Core Logic Functions ---
 def update_music_caches():
@@ -83,7 +84,7 @@ def reset_progress_state():
 
 def handle_reset_button():
     """Action for the Reload Music / Start Over button."""
-    global isPlaying, storedIndex, elapsedTime
+    global isPlaying, storedIndex, elapsedTime, status_label
     
     update_music_caches() 
     reset_progress_state()
@@ -93,6 +94,9 @@ def handle_reset_button():
     elapsedTime = 0
     if autoplay_button:
         autoplay_button.config(text="Start Autoplay")
+    
+    if status_label:
+        status_label.config(text="Music reloaded and playback reset")
 
 def translate_notes_for_typing(notes_to_translate):
     """Translates number characters in a string to their corresponding QWERTY letters."""
@@ -103,7 +107,7 @@ def translate_notes_for_typing(notes_to_translate):
 
 def play_next_note_action():
     """Plays the next note based on the current state and input music."""
-    global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache
+    global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache, status_label
 
     if update_music_caches(): 
         reset_progress_state()
@@ -113,6 +117,8 @@ def play_next_note_action():
 
     if not cleaned_music:
         print("[Debug] play_next_note_action: No cleaned music to play.")
+        if status_label:
+            status_label.config(text="No music to play")
         return
 
     if current_idx_cleaned >= len(cleaned_music):
@@ -120,8 +126,11 @@ def play_next_note_action():
         reset_progress_state()
         if next_notes_display_widget:
             next_notes_display_widget.config(state="normal")
+            next_notes_display_widget.delete("1.0", tk.END)
             next_notes_display_widget.insert(tk.END, "♪ End of song. Press hotkey to play again or Reset. ♪")
             next_notes_display_widget.config(state="disabled")
+        if status_label:
+            status_label.config(text="End of song reached")
         return
 
     match = re.match(r"(\[.*?]|.)", cleaned_music[current_idx_cleaned:])
@@ -148,6 +157,9 @@ def play_next_note_action():
             next_notes_str = raw_music[safe_display_start_idx : safe_display_start_idx + 90]
             next_notes_display_widget.insert(tk.END, next_notes_str)
             next_notes_display_widget.config(state="disabled")
+
+        if status_label:
+            status_label.config(text=f"Playing note: {keys_to_send_original}")
 
         if keys_to_send: 
             time.sleep(0.05)
@@ -185,73 +197,188 @@ def start_keyboard_listener():
 # --- GUI Setup ---
 def setup_and_run_gui():
     global root, piano_music_input_widget, next_notes_display_widget, keyboard_listener_object
-    global midi_listbox, speed_label, autoplay_button
+    global midi_listbox, speed_label, autoplay_button, status_label
 
     print("[Debug] setup_and_run_gui: Initializing GUI...")
     root = tk.Tk()
     root.title("Pianoblox - Universal Piano Autoplayer")
     root.wm_attributes("-topmost", 1)
-
-    tk.Label(root, text="Universal Virtual Piano Autoplayer", font=("Arial", 14, "bold")).pack(pady=(10,5))
     
-    main_frame = tk.Frame(root, padx=10, pady=5)
-    main_frame.pack(fill=tk.BOTH, expand=True)
-
-    tk.Label(main_frame, text="Paste Music Sheets Here (or Load MIDI File):", justify=tk.LEFT).pack(pady=(5,2), anchor="w")
+    bg_color = "#f5f5f5"
+    header_color = "#2c3e50"
+    accent_color = "#3498db"
+    button_color = "#2980b9"
+    button_text_color = "white"
+    section_bg = "#ffffff"
+    border_color = "#bdc3c7"
     
-    piano_music_input_widget = scrolledtext.ScrolledText(main_frame, height=10, width=65, wrap=tk.WORD, relief=tk.SOLID, borderwidth=1)
-    piano_music_input_widget.pack(pady=5, fill="x", expand=True)
+    root.configure(bg=bg_color)
+    
+    style = ttk.Style()
+    style.configure("TFrame", background=bg_color)
+    style.configure("Section.TFrame", background=section_bg, relief="solid", borderwidth=1)
+    style.configure("TButton", background=button_color, foreground=button_text_color, font=("Arial", 10, "bold"))
+    style.map("TButton", background=[("active", accent_color)])
+    style.configure("TLabel", background=bg_color, font=("Arial", 10))
+    style.configure("Header.TLabel", background=header_color, foreground="white", font=("Arial", 14, "bold"), padding=10)
+    style.configure("Section.TLabel", background=section_bg, font=("Arial", 11, "bold"), padding=5)
+    
+    main_container = ttk.Frame(root, style="TFrame", padding=10)
+    main_container.pack(fill=tk.BOTH, expand=True)
+    
+    header_frame = tk.Frame(main_container, bg=header_color, height=60)
+    header_frame.pack(fill=tk.X, padx=2, pady=(0, 10))
+    
+    title_label = tk.Label(header_frame, text="Pianoblox", font=("Arial", 22, "bold"), 
+                           bg=header_color, fg="white")
+    title_label.pack(side=tk.LEFT, padx=15, pady=10)
+    
+    subtitle_label = tk.Label(header_frame, text="Universal Piano Autoplayer", 
+                            font=("Arial", 12), bg=header_color, fg="#ecf0f1")
+    subtitle_label.pack(side=tk.LEFT, padx=5, pady=10)
+    
+    input_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
+    input_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=5)
+    
+    ttk.Label(input_frame, text="Paste Music Sheets Here (or Load MIDI File):", 
+             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
+    
+    piano_music_input_widget = scrolledtext.ScrolledText(
+        input_frame, height=8, width=65, wrap=tk.WORD, 
+        font=("Consolas", 11), borderwidth=1,
+        background="white", foreground="#2c3e50"
+    )
+    piano_music_input_widget.pack(fill=tk.BOTH, expand=True, pady=5)
     piano_music_input_widget.insert(tk.INSERT, "Example: q w e [rt] y / [tyu] o p")
-
-    midi_frame = tk.Frame(main_frame)
-    midi_frame.pack(fill="x", pady=5)
     
-    tk.Label(midi_frame, text="Available MIDI files in /midi/ folder:", justify=tk.LEFT).pack(pady=(5,2), anchor="w")
+    midi_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
+    midi_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    midi_listbox = tk.Listbox(midi_frame, height=6, width=65)
-    midi_listbox.pack(side=tk.LEFT, fill="x", expand=True, pady=5)
+    ttk.Label(midi_frame, text="Available MIDI files in /midi/ folder:", 
+             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
-    scrollbar = tk.Scrollbar(midi_frame, orient="vertical")
+    midi_list_frame = ttk.Frame(midi_frame)
+    midi_list_frame.pack(fill=tk.BOTH, expand=True)
+    
+    midi_listbox = tk.Listbox(
+        midi_list_frame, height=6, 
+        font=("Consolas", 10),
+        background="white", foreground="#2c3e50",
+        borderwidth=1, relief="solid",
+        selectbackground=accent_color, selectforeground="white"
+    )
+    midi_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+    scrollbar = tk.Scrollbar(midi_list_frame, orient="vertical")
     scrollbar.config(command=midi_listbox.yview)
     scrollbar.pack(side=tk.RIGHT, fill="y")
     midi_listbox.config(yscrollcommand=scrollbar.set)
     
     refresh_midi_list()
     
-    midi_button_frame = tk.Frame(main_frame)
-    midi_button_frame.pack(fill="x", pady=5)
+    midi_button_frame = ttk.Frame(midi_frame, padding=(0, 10, 0, 0))
+    midi_button_frame.pack(fill=tk.X)
     
-    load_midi_button = tk.Button(midi_button_frame, text="Load Selected MIDI", command=load_selected_midi, width=20)
-    load_midi_button.pack(side=tk.LEFT, padx=5)
+    load_midi_button = ttk.Button(
+        midi_button_frame, text="Load Selected MIDI", 
+        command=load_selected_midi, style="TButton"
+    )
+    load_midi_button.pack(side=tk.LEFT, padx=(0, 5))
     
-    browse_midi_button = tk.Button(midi_button_frame, text="Browse for MIDI...", command=browse_for_midi, width=20)
-    browse_midi_button.pack(side=tk.LEFT, padx=5)
+    browse_midi_button = ttk.Button(
+        midi_button_frame, text="Browse for MIDI...", 
+        command=browse_for_midi, style="TButton"
+    )
+    browse_midi_button.pack(side=tk.LEFT)
     
-    tk.Label(main_frame, text="Autoplay Controls (DELETE to start/stop, HOME to rewind, END for next, PAGE UP/DOWN for speed):", 
-             justify=tk.LEFT).pack(pady=(10,2), anchor="w")
+    control_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
+    control_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    speed_frame = tk.Frame(main_frame)
-    speed_frame.pack(fill="x", pady=5)
+    ttk.Label(control_frame, text="Autoplay Controls:", 
+             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
-    speed_label = tk.Label(speed_frame, text=f"Speed: {playback_speed:.2f}x", width=15, anchor="w")
-    speed_label.pack(side=tk.LEFT, padx=5)
+    shortcuts_frame = ttk.Frame(control_frame)
+    shortcuts_frame.pack(fill=tk.X, pady=5)
     
-    autoplay_button = tk.Button(speed_frame, text="Start Autoplay", command=toggle_autoplay, width=20)
-    autoplay_button.pack(side=tk.LEFT, padx=5)
+    shortcut_text = "DELETE: Start/Stop | HOME: Rewind | END: Next | PAGE UP/DOWN: Speed"
+    ttk.Label(shortcuts_frame, text=shortcut_text, 
+             background=section_bg, font=("Arial", 9)).pack(anchor="w")
     
-    tk.Label(main_frame, text="Manual Hotkeys (one note per press): -, =, [, ]", justify=tk.LEFT).pack(pady=2, anchor="w")
+    speed_frame = ttk.Frame(control_frame, padding=(0, 5))
+    speed_frame.pack(fill=tk.X)
     
-    reset_button = tk.Button(main_frame, text="Reload Music / Start Over", command=handle_reset_button, width=25, height=2)
-    reset_button.pack(pady=10)
+    speed_label = tk.Label(
+        speed_frame, text=f"Speed: {playback_speed:.2f}x", 
+        font=("Arial", 11, "bold"), bg=section_bg
+    )
+    speed_label.pack(side=tk.LEFT, padx=(0, 10))
     
-    tk.Label(main_frame, text="Next Notes:", justify=tk.LEFT).pack(pady=(10,2), anchor="w")
-    next_notes_display_widget = tk.Text(main_frame, height=4, width=65, state="disabled", relief=tk.SOLID, borderwidth=1, wrap=tk.WORD, background="white", fg="black")
-    next_notes_display_widget.pack(pady=5, fill="x", expand=True)
+    speed_buttons_frame = ttk.Frame(speed_frame)
+    speed_buttons_frame.pack(side=tk.LEFT)
+    
+    speed_down_btn = ttk.Button(
+        speed_buttons_frame, text="Slower", 
+        command=slow_down, width=8, style="TButton"
+    )
+    speed_down_btn.pack(side=tk.LEFT, padx=(0, 5))
+    
+    speed_up_btn = ttk.Button(
+        speed_buttons_frame, text="Faster", 
+        command=speed_up, width=8, style="TButton"
+    )
+    speed_up_btn.pack(side=tk.LEFT)
+    
+    autoplay_button = ttk.Button(
+        speed_frame, text="Start Autoplay", 
+        command=toggle_autoplay, width=15, style="TButton"
+    )
+    autoplay_button.pack(side=tk.RIGHT)
+    
+    manual_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
+    manual_frame.pack(fill=tk.BOTH, padx=2, pady=5)
+    
+    ttk.Label(manual_frame, text="Manual Play Mode:", 
+             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
+    
+    manual_info_frame = ttk.Frame(manual_frame)
+    manual_info_frame.pack(fill=tk.X, pady=(0, 10))
+    
+    ttk.Label(manual_info_frame, text="Hotkeys (one note per press): -, =, [, ]", 
+             background=section_bg, font=("Arial", 10)).pack(anchor="w")
+    
+    reset_button = ttk.Button(
+        manual_frame, text="Reload Music / Start Over", 
+        command=handle_reset_button, style="TButton"
+    )
+    reset_button.pack(anchor="w")
+    
+    notes_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
+    notes_frame.pack(fill=tk.BOTH, padx=2, pady=5)
+    
+    ttk.Label(notes_frame, text="Next Notes:", 
+             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
+    
+    next_notes_display_widget = tk.Text(
+        notes_frame, height=3, width=65, state="disabled", 
+        font=("Consolas", 11), relief="solid", borderwidth=1,
+        background="white", foreground="#2c3e50"
+    )
+    next_notes_display_widget.pack(fill=tk.BOTH, expand=True)
+    
+    status_frame = tk.Frame(main_container, bg="#34495e", height=25)
+    status_frame.pack(fill=tk.X, padx=2, pady=(5, 0))
+
+    global status_label
+    status_label = tk.Label(
+        status_frame, text="Ready", font=("Arial", 9),
+        bg="#34495e", fg="white", anchor="w"
+    )
+    status_label.pack(fill=tk.X, padx=10, pady=3)
     
     if piano_music_input_widget:
-      print("[Debug] setup_and_run_gui: Performing initial music cache update and progress reset.")
-      update_music_caches()
-      reset_progress_state()
+        print("[Debug] setup_and_run_gui: Performing initial music cache update and progress reset.")
+        update_music_caches()
+        reset_progress_state()
 
     print("[Debug] setup_and_run_gui: Starting keyboard listener...")
     keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
@@ -259,32 +386,22 @@ def setup_and_run_gui():
 
     def on_closing():
         if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
-            # Listener is already a daemon, so no need to stop manually if daemon=True
-            # if keyboard_listener_object:
-            #     keyboard_listener_object.stop() 
             root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     
-    print("[Debug] setup_and_run_gui: Displaying initial info message.")
-    root.after(100, lambda: messagebox.showinfo("Information", 
-                        "Ensure the virtual piano window is active for keystrokes to be sent.\n\n"
-                        "On macOS: You may need to grant permissions in System Settings > Privacy & Security for both:\n"
-                        "  - Accessibility\n"
-                        "  - Input Monitoring\n"
-                        "to allow Terminal/Python to control other applications.\n\n"
-                        "Hotkeys:\n"
-                        "  - Manual play: -, =, [, ]\n"
-                        "  - Autoplay: DELETE to start/stop, HOME to rewind, END for next, PAGE UP/DOWN for speed"))
-
     print("[Debug] setup_and_run_gui: Starting Tkinter mainloop.")
+    
+    if status_label:
+        status_label.config(text="Ready - Use hotkeys to play or load a MIDI file")
+        
     root.mainloop()
 
 class MidiFile:
     startSequence = [
-        [0x4D, 0x54, 0x68, 0x64],  # MThd
-        [0x4D, 0x54, 0x72, 0x6B],  # MTrk
-        [0xFF]  # FF
+        [0x4D, 0x54, 0x68, 0x64],
+        [0x4D, 0x54, 0x72, 0x6B],
+        [0xFF]
     ]
 
     typeDict = {
@@ -327,7 +444,7 @@ class MidiFile:
         self.tempo = 0
 
         self.midiRecord_list = []
-        self.record_file = "midiRecord.txt"
+        self.record_file = "midiRecord.json"
         self.midi_file = midi_file
 
         self.deltaTimeStarted = False
@@ -591,36 +708,41 @@ class MidiFile:
         return
 
     def save_song(self, song_file):
+        import json
         print("Saving notes to", song_file)
+        song_data = {
+            "playback_speed": playback_speed,
+            "notes": self.notes
+        }
         with codecs.open(song_file, "w", encoding='utf-8') as f:
-            f.write(f"playback_speed={playback_speed}\n")
-            for l in self.notes:
-                f.write(str(l[0]) + " " + str(l[1]) + "\n")
+            json.dump(song_data, f, indent=2)
         return
 
     def save_sheet(self, sheet_file):
+        import json
         print("Saving sheets to", sheet_file)
+        sheet_data = []
         note_count = 0
+        
+        for timing, notes in self.notes:
+            if not "tempo" in notes and "~" not in notes:
+                if len(notes) > 1:
+                    note = "[" + notes + "]"
+                else:
+                    note = notes
+                
+                sheet_data.append(note)
+                note_count += 1
+        
         with codecs.open(sheet_file, "w", encoding='utf-8') as f:
-            for timing, notes in self.notes:
-                if not "tempo" in notes and "~" not in notes:
-                    if len(notes) > 1:
-                        note = "[" + notes + "]"
-                    else:
-                        note = notes
-                    note_count += 1
-                    f.write(f"{note} ")
-                    if note_count % 8 == 0:
-                        f.write("\n")
-                    if note_count % 32 == 0:
-                        f.write("\n\n")
+            json.dump(sheet_data, f, indent=2)
         return
 
     def save_record(self, record_file):
+        import json
         print("Saving processing log to", record_file)
         with codecs.open(record_file, "w", encoding='utf-8') as f:
-            for s in self.midiRecord_list:
-                f.write(s)
+            json.dump(self.midiRecord_list, f, indent=2)
         return
 
 # --- MIDI Playback Functions ---
@@ -640,19 +762,23 @@ def is_shifted(char_in):
 
 def speed_up():
     """Increase playback speed."""
-    global playback_speed
+    global playback_speed, status_label
     playback_speed *= speedMultiplier
     if speed_label:
         speed_label.config(text=f"Speed: {playback_speed:.2f}x")
     print(f"Speeding up: Playback speed is now {playback_speed:.2f}x")
+    if status_label:
+        status_label.config(text=f"Speed increased to {playback_speed:.2f}x")
 
 def slow_down():
     """Decrease playback speed."""
-    global playback_speed
+    global playback_speed, status_label
     playback_speed /= speedMultiplier
     if speed_label:
         speed_label.config(text=f"Speed: {playback_speed:.2f}x")
     print(f"Slowing down: Playback speed is now {playback_speed:.2f}x")
+    if status_label:
+        status_label.config(text=f"Speed decreased to {playback_speed:.2f}x")
 
 def press_letter(str_letter):
     """Press a key on the keyboard."""
@@ -679,17 +805,18 @@ def release_letter(str_letter):
     return
 
 def process_midi_file():
-    """Process the song.txt file created by MIDI conversion."""
+    """Process the song.json file created by MIDI conversion."""
     global playback_speed
+    import json
     try:
-        with open("song.txt", "r") as macro_file:
-            lines = macro_file.read().split("\n")
+        with open("song.json", "r") as macro_file:
+            song_data = json.load(macro_file)
             t_offset_set = False
             t_offset = 0
-
-            if len(lines) > 0 and "=" in lines[0]:
+            
+            if "playback_speed" in song_data:
                 try:
-                    playback_speed = float(lines[0].split("=")[1])
+                    playback_speed = float(song_data["playback_speed"])
                     print("Playback speed is set to %.2f" % playback_speed)
                     if speed_label:
                         speed_label.config(text=f"Speed: {playback_speed:.2f}x")
@@ -697,33 +824,27 @@ def process_midi_file():
                     print("Error: Invalid playback speed value")
                     return None
             else:
-                print("Error: Invalid playback speed format")
+                print("Error: Playback speed not found in JSON")
                 return None
 
             tempo = None
             processed_notes = []
             
-            for line in lines[1:]:
-                if 'tempo' in line:
+            for note_entry in song_data["notes"]:
+                wait_to_press = float(note_entry[0])
+                notes = note_entry[1]
+                
+                if 'tempo' in notes:
                     try:
-                        tempo = 60 / float(line.split("=")[1])
+                        tempo = 60 / float(notes.split("=")[1])
                     except ValueError:
                         print("Error: Invalid tempo value")
                         return None
-                else:
-                    l = line.split(" ")
-                    if len(l) < 2:
-                        continue
-                    try:
-                        wait_to_press = float(l[0])
-                        notes = l[1]
-                        processed_notes.append([wait_to_press, notes])
-                        if not t_offset_set:
-                            t_offset = wait_to_press
-                            t_offset_set = True
-                    except ValueError:
-                        print("Error: Invalid note format")
-                        continue
+                
+                processed_notes.append([wait_to_press, notes])
+                if not t_offset_set:
+                    t_offset = wait_to_press
+                    t_offset_set = True
 
             if tempo is None:
                 print("Error: Tempo not specified")
@@ -782,7 +903,8 @@ def adjust_tempo_for_current_note():
 
 def play_next_midi_note():
     """Plays the next MIDI note based on the current state."""
-    global isPlaying, storedIndex, playback_speed, elapsedTime, legitModeActive, heldNotes, next_notes_display_widget, autoplay_button
+    global isPlaying, storedIndex, playback_speed, elapsedTime, legitModeActive, heldNotes
+    global next_notes_display_widget, autoplay_button, status_label
 
     if not isPlaying:
         return
@@ -841,7 +963,11 @@ def play_next_midi_note():
         if "~" not in note_keys:
             elapsed_mins, elapsed_secs = divmod(elapsedTime, 60)
             total_mins, total_secs = divmod(total_duration, 60)
-            print(f"[{int(elapsed_mins)}m {int(elapsed_secs)}s/{int(total_mins)}m {int(total_secs)}s] {note_keys}")
+            progress_text = f"[{int(elapsed_mins)}m {int(elapsed_secs)}s/{int(total_mins)}m {int(total_secs)}s] {note_keys}"
+            print(progress_text)
+            
+            if status_label:
+                status_label.config(text=f"Playing: {note_keys} ({int(elapsed_mins)}:{int(elapsed_secs):02d}/{int(total_mins)}:{int(total_secs):02d})")
 
         storedIndex += 1
         if delay == 0:
@@ -854,6 +980,8 @@ def play_next_midi_note():
         elapsedTime = 0
         if autoplay_button:
             autoplay_button.config(text="Start Autoplay")
+        if status_label:
+            status_label.config(text="Playback complete")
 
 def release_held_notes(note_keys):
     """Release keys that have been held down for their duration."""
@@ -866,34 +994,42 @@ def release_held_notes(note_keys):
 
 def rewind():
     """Rewind playback by 10 notes."""
-    global storedIndex
+    global storedIndex, status_label
     if storedIndex - 10 < 0:
         storedIndex = 0
     else:
         storedIndex -= 10
     print(f"Rewound to note {storedIndex}")
+    if status_label:
+        status_label.config(text=f"Rewound to note {storedIndex}")
 
 def skip():
     """Skip forward by 10 notes."""
-    global storedIndex, isPlaying
+    global storedIndex, isPlaying, status_label
     if storedIndex + 10 > len(infoTuple[2]):
         isPlaying = False
         storedIndex = 0
     else:
         storedIndex += 10
     print(f"Skipped to note {storedIndex}")
+    if status_label:
+        status_label.config(text=f"Skipped to note {storedIndex}")
 
 def toggle_autoplay():
     """Toggle autoplay on or off."""
-    global isPlaying, autoplay_button
+    global isPlaying, autoplay_button, status_label
     isPlaying = not isPlaying
     
     if autoplay_button:
         if isPlaying:
             autoplay_button.config(text="Stop Autoplay")
+            if status_label:
+                status_label.config(text="Playing MIDI file...")
             play_next_midi_note()
         else:
             autoplay_button.config(text="Start Autoplay")
+            if status_label:
+                status_label.config(text="Autoplay stopped")
     else:
         if isPlaying:
             print("Starting autoplay...")
@@ -920,7 +1056,8 @@ def handle_midi_keypress(key):
 
 def load_midi_file(file_path=None):
     """Load and process a MIDI file."""
-    global infoTuple, isPlaying, storedIndex, elapsedTime, sheet_file, song_file
+    global infoTuple, isPlaying, storedIndex, elapsedTime, sheet_file, song_file, status_label
+    import json
     
     isPlaying = False
     storedIndex = 0
@@ -938,9 +1075,12 @@ def load_midi_file(file_path=None):
     if not file_path:
         return
 
+    if status_label:
+        status_label.config(text=f"Loading MIDI file: {os.path.basename(file_path)}...")
+
     try:
-        song_file = "song.txt"
-        sheet_file = "sheetConversion.txt"
+        song_file = "song.json"
+        sheet_file = "sheetConversion.json"
         
         midi = MidiFile(file_path)
         if midi.success:
@@ -948,7 +1088,18 @@ def load_midi_file(file_path=None):
             midi.save_sheet(sheet_file)
             
             with open(sheet_file, "r") as f:
-                sheet_content = f.read()
+                sheet_data = json.load(f)
+                sheet_content = ""
+                note_count = 0
+                
+                for note in sheet_data:
+                    sheet_content += f"{note} "
+                    note_count += 1
+                    if note_count % 8 == 0:
+                        sheet_content += "\n"
+                    if note_count % 32 == 0:
+                        sheet_content += "\n\n"
+                
                 if piano_music_input_widget:
                     piano_music_input_widget.delete("1.0", tk.END)
                     piano_music_input_widget.insert(tk.INSERT, sheet_content)
@@ -956,14 +1107,22 @@ def load_midi_file(file_path=None):
             infoTuple = process_midi_file()
             if infoTuple is None:
                 messagebox.showerror("Error", "Failed to process the MIDI file.")
+                if status_label:
+                    status_label.config(text="Error: Failed to process MIDI file")
                 return
                 
             infoTuple[2] = parse_midi_info()
             messagebox.showinfo("Success", f"MIDI file loaded: {os.path.basename(file_path)}")
+            if status_label:
+                status_label.config(text=f"MIDI file loaded: {os.path.basename(file_path)}")
         else:
             messagebox.showerror("Error", "Failed to process the MIDI file.")
+            if status_label:
+                status_label.config(text="Error: Failed to process MIDI file")
     except Exception as e:
         messagebox.showerror("Error", f"An error occurred while loading the MIDI file: {str(e)}")
+        if status_label:
+            status_label.config(text="Error loading MIDI file")
 
 def browse_for_midi():
     """Open a file dialog to select a MIDI file."""
@@ -1034,7 +1193,7 @@ if __name__ == "__main__":
         os.makedirs(midi_dir)
         print(f"[Debug] Created '{midi_dir}' directory for MIDI files")
     
-    if os.path.exists("song.txt") and os.path.exists("sheetConversion.txt"):
+    if os.path.exists("song.json") and os.path.exists("sheetConversion.json"):
         try:
             infoTuple = process_midi_file()
             if infoTuple:

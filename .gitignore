@@ -1,2 +1,5 @@
 venv/
 midi/*.mid
+midiRecord.json
+sheetConversion.json
+song.json

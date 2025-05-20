@@ -35,6 +35,30 @@ Pianoblox is a universal virtual piano autoplayer that allows you to play notes 
    python pianoblox.py
    ```
 
+## Running Pre-built Application
+
+Instead of installing from source, you can download and run the pre-built application:
+
+Download the latest release for your platform from the [Releases](https://github.com/gvoze32/pianoblox/releases) page
+
+### Windows
+- Double-click the downloaded `pianoblox-windows.exe` file to run the application
+
+### macOS
+- Double-click the downloaded `.zip` file to extract it
+- Move PianoBlox.app to your Applications folder
+- Right-click PianoBlox.app and select "Open" (required the first time to bypass security warning)
+
+### Linux
+- Make the downloaded AppImage file executable:
+  ```
+  chmod +x pianoblox-linux.AppImage
+  ```
+- Run the application:
+  ```
+  ./pianoblox-linux.AppImage
+  ```
+
 ## System Permissions
 
 ### Important Note for macOS Users

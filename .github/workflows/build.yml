@@ -69,19 +69,19 @@ jobs:
           
       - name: Build with PyInstaller (Windows)
         if: runner.os == 'Windows'
-        run: pyinstaller --onefile --windowed --noconsole --name ${{ matrix.output_name }} --icon=assets/icon.ico pianoblox.py
+        run: pyinstaller --onefile --windowed --name ${{ matrix.output_name }} --icon=assets/icon.ico pianoblox.py
  
       - name: Build with PyInstaller (macOS)
         if: runner.os == 'macOS'
         run: |
           # Create .app bundle
-          pyinstaller --windowed --noconsole --name ${{ matrix.output_name }} --icon=assets/icon.icns pianoblox.py
+          pyinstaller --onedir --windowed --name ${{ matrix.output_name }} --icon=assets/icon.icns --osx-bundle-identifier="com.pianoblox.app" pianoblox.py
           
       - name: Build with PyInstaller (Linux)
         if: runner.os == 'Linux'
         run: |
           # Create basic executable
-          pyinstaller --onefile --windowed --noconsole --name ${{ matrix.output_name }} --icon=assets/icon.png pianoblox.py
+          pyinstaller --onefile --windowed --name ${{ matrix.output_name }} --icon=assets/icon.png pianoblox.py
           
           # Create AppDir structure
           mkdir -p AppDir/usr/bin

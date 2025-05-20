@@ -213,26 +213,29 @@ def play_next_note_action():
         time.sleep(KEY_DELAY)
 
 # --- Hotkey Listener ---
+def key_handler(key, is_press):
+    """Handle keyboard events for both normal and MIDI playback."""
+    global isPlaying
+    
+    if is_press and key in [keyboard.Key.delete, keyboard.Key.home, keyboard.Key.end, 
+                      keyboard.Key.page_up, keyboard.Key.page_down]:
+        handle_midi_keypress(key)
+        return True
+        
+    if is_press:
+        try:
+            pressed_char = key.char
+            if pressed_char and pressed_char in HOTKEY_CHARS:
+                if root:
+                    root.after_idle(play_next_note_action)
+        except AttributeError:
+            pass
+            
+    return True
+
 def on_key_press(key):
     """Callback for pynput keyboard listener for keypresses."""
-    global root, piano_music_input_widget, next_notes_display_widget
-    print(f"[Debug] on_key_press: Key {key} pressed.")
-    
-    if key in [keyboard.Key.delete, keyboard.Key.home, keyboard.Key.end, 
-               keyboard.Key.page_up, keyboard.Key.page_down]:
-        handle_midi_keypress(key)
-        
-    try:
-        pressed_char = key.char
-        if pressed_char and pressed_char in HOTKEY_CHARS:
-            print(f"[Debug] on_key_press: Hotkey '{pressed_char}' detected.")
-            if root:
-                print("[Debug] on_key_press: Scheduling play_next_note_action via root.after_idle()")
-                root.after_idle(play_next_note_action)
-    except AttributeError:
-        pass
-        
-    return True
+    return key_handler(key, True)
 
 def start_keyboard_listener():
     global keyboard_listener_object
@@ -295,7 +298,7 @@ def setup_and_run_gui():
     input_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     input_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=5)
     
-    ttk.Label(input_frame, text="Paste Music Sheets Here (or Load MIDI File):", 
+    ttk.Label(input_frame, text="Paste Music Sheets Here (or Load MIDI File)", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     piano_music_input_widget = scrolledtext.ScrolledText(
@@ -309,8 +312,41 @@ def setup_and_run_gui():
     midi_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     midi_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(midi_frame, text="MIDI Library:", 
-             style="Section.TLabel").pack(anchor="w", pady=(0, 5))
+    global midi_count_label
+    midi_count_label = ttk.Label(midi_frame, text="MIDI Library (0 files)", 
+                         style="Section.TLabel")
+    midi_count_label.pack(anchor="w", pady=(0, 5))
+    
+    # Add search and sort options
+    search_sort_frame = ttk.Frame(midi_frame)
+    search_sort_frame.pack(fill=tk.X, pady=(0, 5))
+    
+    # Search box
+    ttk.Label(search_sort_frame, text="Search:", 
+             background=section_bg).pack(side=tk.LEFT, padx=(0, 5))
+    
+    global search_var
+    search_var = tk.StringVar()
+    search_entry = ttk.Entry(search_sort_frame, textvariable=search_var, width=20)
+    search_entry.pack(side=tk.LEFT, padx=(0, 10))
+    search_entry.bind("<KeyRelease>", search_midi_files)
+    
+    # Sort options
+    ttk.Label(search_sort_frame, text="Sort by:", 
+             background=section_bg).pack(side=tk.LEFT, padx=(0, 5))
+    
+    global sort_var
+    sort_var = tk.StringVar(value="name")
+    
+    name_radio = ttk.Radiobutton(search_sort_frame, text="Name", 
+                                variable=sort_var, value="name",
+                                command=lambda: search_midi_files())
+    name_radio.pack(side=tk.LEFT, padx=(0, 5))
+    
+    date_radio = ttk.Radiobutton(search_sort_frame, text="Date", 
+                               variable=sort_var, value="date",
+                               command=lambda: search_midi_files())
+    date_radio.pack(side=tk.LEFT)
     
     midi_list_frame = ttk.Frame(midi_frame)
     midi_list_frame.pack(fill=tk.BOTH, expand=True)
@@ -323,6 +359,7 @@ def setup_and_run_gui():
         selectbackground=accent_color, selectforeground="white"
     )
     midi_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    midi_listbox.bind("<<ListboxSelect>>", show_midi_info)
     
     scrollbar = tk.Scrollbar(midi_list_frame, orient="vertical")
     scrollbar.config(command=midi_listbox.yview)
@@ -355,7 +392,7 @@ def setup_and_run_gui():
     control_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     control_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(control_frame, text="Autoplay Controls:", 
+    ttk.Label(control_frame, text="Autoplay Controls", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     shortcuts_frame = ttk.Frame(control_frame)
@@ -398,7 +435,7 @@ def setup_and_run_gui():
     manual_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     manual_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(manual_frame, text="Manual Play Mode:", 
+    ttk.Label(manual_frame, text="Manual Play Mode", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     manual_info_frame = ttk.Frame(manual_frame)
@@ -416,7 +453,7 @@ def setup_and_run_gui():
     notes_frame = ttk.Frame(main_container, style="Section.TFrame", padding=10)
     notes_frame.pack(fill=tk.BOTH, padx=2, pady=5)
     
-    ttk.Label(notes_frame, text="Next Notes:", 
+    ttk.Label(notes_frame, text="Next Notes", 
              style="Section.TLabel").pack(anchor="w", pady=(0, 5))
     
     next_notes_display_widget = tk.Text(
@@ -445,6 +482,12 @@ def setup_and_run_gui():
     print("[Debug] setup_and_run_gui: Starting keyboard listener...")
     start_keyboard_listener()
 
+    # Add MIDI info label
+    global midi_info_label
+    midi_info_label = ttk.Label(midi_frame, text="No file selected", 
+                        background=section_bg, font=("Arial", 9))
+    midi_info_label.pack(fill=tk.X, pady=(5, 0), before=midi_button_frame)
+    
     def on_closing():
         if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
             root.destroy()
@@ -1295,9 +1338,9 @@ def delete_selected_midi():
             if status_label:
                 status_label.config(text=f"Error deleting file: {str(e)}")
 
-def refresh_midi_list():
+def refresh_midi_list(search_term="", sort_by="name"):
     """Refresh the list of available MIDI files."""
-    global midi_listbox
+    global midi_listbox, midi_count_label
     if not midi_listbox:
         return
         
@@ -1305,32 +1348,105 @@ def refresh_midi_list():
     
     midi_folder = get_midi_directory()
     midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
+    
+    # Filter files by search term
+    if search_term:
+        midi_files = [f for f in midi_files if search_term.lower() in f.lower()]
+    
+    # Sort files
+    if sort_by == "name":
+        midi_files.sort()
+    elif sort_by == "date":
+        midi_files.sort(key=lambda f: os.path.getmtime(os.path.join(midi_folder, f)), reverse=True)
+    
     for file in midi_files:
         midi_listbox.insert(tk.END, file)
-
-def key_handler(key, is_press):
-    """Handle keyboard events for both normal and MIDI playback."""
-    global isPlaying
-    
-    if is_press and key in [keyboard.Key.delete, keyboard.Key.home, keyboard.Key.end, 
-                      keyboard.Key.page_up, keyboard.Key.page_down]:
-        handle_midi_keypress(key)
-        return True
         
-    if is_press:
-        try:
-            pressed_char = key.char
-            if pressed_char and pressed_char in HOTKEY_CHARS:
-                if root:
-                    root.after_idle(play_next_note_action)
-        except AttributeError:
-            pass
-            
-    return True
+    # Update count label
+    if 'midi_count_label' in globals() and midi_count_label:
+        midi_count_label.config(text=f"MIDI Library: ({len(midi_files)} files)")
 
-def on_key_press(key):
-    """Callback for pynput keyboard listener for keypresses."""
-    return key_handler(key, True)
+def search_midi_files(event=None):
+    """Search MIDI files based on the search box content."""
+    search_term = search_var.get()
+    refresh_midi_list(search_term=search_term, sort_by=sort_var.get())
+
+def get_midi_info(file_path):
+    """Get basic information about a MIDI file."""
+    try:
+        midi = MidiFile(file_path, verbose=False)
+        if not midi.success:
+            return {"status": "error", "message": "Failed to parse MIDI file"}
+            
+        # Count actual notes (not tempo changes or other events)
+        note_count = 0
+        for timing, notes in midi.notes:
+            if not "tempo" in notes and "~" not in notes:
+                note_count += len(notes)
+                
+        # Calculate approximate duration
+        if len(midi.notes) > 1:
+            last_time = float(midi.notes[-1][0])
+            duration_secs = last_time
+            mins = int(duration_secs // 60)
+            secs = int(duration_secs % 60)
+            duration = f"{mins}:{secs:02d}"
+        else:
+            duration = "Unknown"
+            
+        # Get tempo if available
+        tempo = "Unknown"
+        for timing, notes in midi.notes:
+            if "tempo" in notes:
+                try:
+                    tempo = notes.split("=")[1]
+                    break
+                except:
+                    pass
+                    
+        return {
+            "status": "success",
+            "note_count": note_count,
+            "duration": duration,
+            "tempo": tempo
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def show_midi_info(event=None):
+    """Display information about the selected MIDI file."""
+    global midi_listbox, midi_info_label, status_label
+    
+    selection = midi_listbox.curselection()
+    if not selection:
+        if midi_info_label:
+            midi_info_label.config(text="No file selected")
+        return
+    
+    midi_folder = get_midi_directory()
+    midi_files = [f for f in os.listdir(midi_folder) if f.lower().endswith('.mid')]
+    if not midi_files:
+        return
+        
+    selected_file = midi_files[selection[0]]
+    file_path = os.path.join(midi_folder, selected_file)
+    
+    if status_label:
+        status_label.config(text=f"Getting info for: {selected_file}")
+        
+    info = get_midi_info(file_path)
+    
+    if info["status"] == "success":
+        info_text = f"Notes: {info['note_count']} | Duration: {info['duration']} | Tempo: {info['tempo']}"
+        if midi_info_label:
+            midi_info_label.config(text=info_text)
+        if status_label:
+            status_label.config(text=f"Selected: {selected_file}")
+    else:
+        if midi_info_label:
+            midi_info_label.config(text=f"Error: {info['message']}")
+        if status_label:
+            status_label.config(text=f"Error getting info: {selected_file}")
 
 # --- Main Function ---
 if __name__ == "__main__":

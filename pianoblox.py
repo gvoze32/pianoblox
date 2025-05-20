@@ -335,20 +335,20 @@ def setup_and_run_gui():
     midi_button_frame.pack(fill=tk.X)
     
     load_midi_button = ttk.Button(
-        midi_button_frame, text="Load Selected MIDI", 
-        command=load_selected_midi, style="TButton"
+        midi_button_frame, text="Load Selected", 
+        command=load_selected_midi, style="TButton", width=12
     )
     load_midi_button.pack(side=tk.LEFT, padx=(0, 5))
     
     browse_midi_button = ttk.Button(
-        midi_button_frame, text="Browse & Import...", 
-        command=browse_for_midi, style="TButton"
+        midi_button_frame, text="Import Files...", 
+        command=browse_for_midi, style="TButton", width=12
     )
     browse_midi_button.pack(side=tk.LEFT, padx=(0, 5))
     
     delete_midi_button = ttk.Button(
         midi_button_frame, text="Delete Selected", 
-        command=delete_selected_midi, style="TButton"
+        command=delete_selected_midi, style="TButton", width=12
     )
     delete_midi_button.pack(side=tk.LEFT)
     
@@ -1221,8 +1221,35 @@ def load_midi_file(file_path=None):
             status_label.config(text=f"Error: {str(e)}")
 
 def browse_for_midi():
-    """Open a file dialog to select a MIDI file and import it to the app's midi directory."""
-    load_midi_file()
+    """Open a file dialog to select multiple MIDI files and import them to the app's midi directory."""
+    file_paths = filedialog.askopenfilenames(
+        title="Select MIDI Files to Import",
+        filetypes=(("MIDI files", "*.mid"), ("All files", "*.*"))
+    )
+    
+    if not file_paths:
+        return
+        
+    import_count = 0
+    for file_path in file_paths:
+        import_count += import_midi_file(file_path)
+    
+    if status_label:
+        status_label.config(text=f"Imported {import_count} MIDI file(s)")
+    refresh_midi_list()
+
+def import_midi_file(file_path):
+    """Import a single MIDI file to the app's midi directory."""
+    try:
+        midi_dir = get_midi_directory()
+        dest_file = os.path.join(midi_dir, os.path.basename(file_path))
+        if not os.path.exists(dest_file):
+            shutil.copy2(file_path, dest_file)
+            return 1
+    except Exception as e:
+        if status_label:
+            status_label.config(text=f"Error importing file: {str(e)}")
+    return 0
 
 def load_selected_midi():
     """Load the selected MIDI file from the listbox."""

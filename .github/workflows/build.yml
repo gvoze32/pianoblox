@@ -129,12 +129,19 @@ jobs:
           name: windows-artifacts
           path: dist/*.exe
 
+      - name: Package macOS App
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r PianoBlox-macOS.zip PianoBlox.app
+          cd ..
+
       - name: Upload macOS Artifacts
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
-          path: dist/*.app
+          path: dist/*.zip
 
       - name: Upload Linux Artifacts
         if: matrix.os == 'ubuntu-latest'
@@ -155,10 +162,17 @@ jobs:
         with:
           path: artifacts
 
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -name "*.exe" -exec cp {} release-assets/pianoblox-windows.exe \;
+          find artifacts -type f -name "*.zip" -exec cp {} release-assets/PianoBlox-macOS.zip \;
+          find artifacts -type f -name "*.AppImage" -exec cp {} release-assets/pianoblox-linux.AppImage \;
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*
+          files: release-assets/*
           draft: false
           prerelease: false
           generate_release_notes: true

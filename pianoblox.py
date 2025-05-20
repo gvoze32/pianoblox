@@ -49,7 +49,7 @@ legitModeActive = False
 
 conversionCases = {'!': '1', '@': '2', '£': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0'}
 
-kb_controller = keyboard.Controller()
+kb_controller = keyboard.Controller()  # Initialize here as global
 
 root = None
 piano_music_input_widget = None
@@ -135,7 +135,7 @@ def translate_notes_for_typing(notes_to_translate):
 
 def play_next_note_action():
     """Plays the next note based on the current state and input music."""
-    global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache, status_label
+    global current_idx_cleaned, current_idx_raw_display, piano_music_raw_cache, piano_music_cleaned_cache, status_label, kb_controller
 
     if update_music_caches(): 
         reset_progress_state()
@@ -189,16 +189,33 @@ def play_next_note_action():
         if status_label:
             status_label.config(text=f"Playing note: {keys_to_send_original}")
 
-        if keys_to_send: 
+        if keys_to_send:
+            print(f"[Debug] Attempting to type: {keys_to_send}")
+            if not kb_controller:
+                print("[Debug] Warning: Keyboard controller not initialized")
+                if status_label:
+                    status_label.config(text=f"Error: Keyboard controller not initialized")
+                return
+                
             time.sleep(0.05)
-            kb_controller.type(keys_to_send)
+            try:
+                # Type each character separately with a short delay between
+                for char in keys_to_send:
+                    kb_controller.press(char)
+                    kb_controller.release(char)
+                    time.sleep(0.01)
+                print(f"[Debug] Successfully typed: {keys_to_send}")
+            except Exception as e:
+                print(f"[Debug] Error typing keys: {e}")
+                if status_label:
+                    status_label.config(text=f"Error typing keys: {str(e)}")
         
         time.sleep(KEY_DELAY)
 
 # --- Hotkey Listener ---
 def on_key_press(key):
     """Callback for pynput keyboard listener for keypresses."""
-    global root
+    global root, piano_music_input_widget, next_notes_display_widget
     print(f"[Debug] on_key_press: Key {key} pressed.")
     
     if key in [keyboard.Key.delete, keyboard.Key.home, keyboard.Key.end, 
@@ -219,8 +236,18 @@ def on_key_press(key):
 
 def start_keyboard_listener():
     global keyboard_listener_object
-    keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
-    keyboard_listener_object.start()
+    print("[Debug] Starting keyboard listener...")
+    try:
+        # Stop any existing listener first
+        if keyboard_listener_object and keyboard_listener_object.is_alive():
+            keyboard_listener_object.stop()
+            print("[Debug] Stopped existing keyboard listener")
+            
+        keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
+        keyboard_listener_object.start()
+        print(f"[Debug] Keyboard listener started successfully: {keyboard_listener_object.is_alive()}")
+    except Exception as e:
+        print(f"[Debug] Error starting keyboard listener: {e}")
 
 # --- GUI Setup ---
 def setup_and_run_gui():
@@ -416,8 +443,7 @@ def setup_and_run_gui():
     
     update_speed_display()
     print("[Debug] setup_and_run_gui: Starting keyboard listener...")
-    keyboard_listener_object = keyboard.Listener(on_press=on_key_press, daemon=True)
-    keyboard_listener_object.start()
+    start_keyboard_listener()
 
     def on_closing():
         if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
@@ -824,26 +850,44 @@ def update_speed_display():
 
 def press_letter(str_letter):
     """Press a key on the keyboard."""
-    if is_shifted(str_letter):
-        if str_letter in conversionCases:
-            str_letter = conversionCases[str_letter]
-        kb_controller.release(str_letter.lower())
-        kb_controller.press(keyboard.Key.shift)
-        kb_controller.press(str_letter.lower())
-        kb_controller.release(keyboard.Key.shift)
-    else:
-        kb_controller.release(str_letter)
-        kb_controller.press(str_letter)
+    global kb_controller
+    if not kb_controller:
+        print("[Debug] press_letter: Keyboard controller not initialized")
+        return
+        
+    try:
+        if is_shifted(str_letter):
+            if str_letter in conversionCases:
+                str_letter = conversionCases[str_letter]
+            kb_controller.release(str_letter.lower())
+            kb_controller.press(keyboard.Key.shift)
+            kb_controller.press(str_letter.lower())
+            kb_controller.release(keyboard.Key.shift)
+        else:
+            kb_controller.release(str_letter)
+            kb_controller.press(str_letter)
+        print(f"[Debug] Pressed key: {str_letter}")
+    except Exception as e:
+        print(f"[Debug] Error pressing key {str_letter}: {e}")
     return
     
 def release_letter(str_letter):
     """Release a key on the keyboard."""
-    if is_shifted(str_letter):
-        if str_letter in conversionCases:
-            str_letter = conversionCases[str_letter]
-        kb_controller.release(str_letter.lower())
-    else:
-        kb_controller.release(str_letter)
+    global kb_controller
+    if not kb_controller:
+        print("[Debug] release_letter: Keyboard controller not initialized")
+        return
+        
+    try:
+        if is_shifted(str_letter):
+            if str_letter in conversionCases:
+                str_letter = conversionCases[str_letter]
+            kb_controller.release(str_letter.lower())
+        else:
+            kb_controller.release(str_letter)
+        print(f"[Debug] Released key: {str_letter}")
+    except Exception as e:
+        print(f"[Debug] Error releasing key {str_letter}: {e}")
     return
 
 def process_midi_file():

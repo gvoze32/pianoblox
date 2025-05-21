@@ -487,7 +487,10 @@ def setup_and_run_gui():
     midi_info_label.pack(fill=tk.X, pady=(5, 0), before=midi_button_frame)
     
     def on_closing():
-        if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
+        root.wm_attributes("-topmost", 0)
+        result = messagebox.askokcancel("Exit", "Are you sure you want to exit?", parent=root)
+        root.wm_attributes("-topmost", 1)
+        if result:
             root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)

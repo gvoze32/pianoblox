@@ -283,8 +283,33 @@ def setup_and_run_gui():
     style.configure("Header.TLabel", background=header_color, foreground="white", font=("Arial", 14, "bold"), padding=10)
     style.configure("Section.TLabel", background=section_bg, font=("Arial", 11, "bold"), padding=5)
     
-    main_container = ttk.Frame(root, style="TFrame", padding=10)
-    main_container.pack(fill=tk.BOTH, expand=True)
+    outer_frame = ttk.Frame(root)
+    outer_frame.pack(fill=tk.BOTH, expand=True)
+    
+    canvas = tk.Canvas(outer_frame, bg=bg_color)
+    scrollbar = ttk.Scrollbar(outer_frame, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scrollbar.set)
+    
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+    main_container = ttk.Frame(canvas, style="TFrame", padding=10)
+    
+    canvas_window = canvas.create_window((0, 0), window=main_container, anchor="nw")
+    
+    def configure_canvas(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+        canvas.itemconfig(canvas_window, width=canvas.winfo_width())
+    
+    main_container.bind("<Configure>", configure_canvas)
+    canvas.bind("<Configure>", lambda e: canvas.itemconfig(canvas_window, width=canvas.winfo_width()))
+    
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+    canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
     
     header_frame = tk.Frame(main_container, bg=header_color, height=60)
     header_frame.pack(fill=tk.X, padx=2, pady=(0, 10))
@@ -494,6 +519,8 @@ def setup_and_run_gui():
             root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
+    
+    root.geometry("700x600")
     
     print("[Debug] setup_and_run_gui: Starting Tkinter mainloop.")
     

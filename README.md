@@ -21,7 +21,7 @@ Pianoblox is a universal virtual piano autoplayer that allows you to play notes 
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/pianoblox.git
+   git clone https://github.com/gvoze32/pianoblox.git
    cd pianoblox
    ```
 
